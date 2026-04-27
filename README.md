@@ -1,4 +1,4 @@
-# Learnmanagement-app
+# LearnHub
 
 - `npm install`
 - `npm run dev`
