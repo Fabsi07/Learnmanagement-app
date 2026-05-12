@@ -8,7 +8,7 @@ const navItems = [
   ]},
   { section: "Access", items: [
     { label: "Benachrichtigungen", href: "/dashboard/notifications", icon: MessageSquare },
-    { label: "Einstellungen", href: "/dashboard/settings", icon: Settings },
+    { label: "Einstellungen", href: "/dashboard/settings?tab=profile", icon: Settings },
   ]},
 ];
 

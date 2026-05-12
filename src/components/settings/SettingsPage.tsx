@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Bell,
   CalendarDays,
@@ -20,8 +20,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
+type SettingsCategoryId = "profile" | "notifications" | "calendar";
+
 type SettingsCategory = {
-  id: "profile" | "notifications" | "calendar";
+  id: SettingsCategoryId;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
 };
@@ -29,37 +31,74 @@ type SettingsCategory = {
 const settingsCategories: SettingsCategory[] = [
   { id: "profile", label: "Profil", icon: User },
   { id: "notifications", label: "Benachrichtigungen", icon: Bell },
-  { id: "calendar", label: "Calendar", icon: CalendarDays },
+  { id: "calendar", label: "Kalender", icon: CalendarDays },
 ];
 
 const reminderOptions = ["10 Minuten vorher", "1 Stunde vorher", "1 Tag vorher", "3 Tage vorher"];
 const digestTimes = ["07:00", "12:00", "18:00", "20:00"];
 
+// S-15 Fix: Wiederverwendbarer Tailwind-String für native <select>-Elemente.
+const SELECT_CLASSES =
+  "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5 MB
+const ALLOWED_AVATAR_TYPES = ["image/png", "image/jpeg", "image/webp"];
+
 export function SettingsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const tabParam = searchParams.get("tab");
-  const activeCategory =
-    settingsCategories.find((category) => category.id === tabParam)?.id ?? "notifications";
 
-  const activeTitle = useMemo(
-    () => settingsCategories.find((category) => category.id === activeCategory)?.label ?? "Einstellungen",
-    [activeCategory]
-  );
+  const tabParam = searchParams.get("tab");
+  // S-2 Fix: Default-Tab ist 'profile'.
+  const activeCategory: SettingsCategoryId =
+    settingsCategories.find((category) => category.id === tabParam)?.id ?? "profile";
+
+  // S-12 Fix: Direkt berechnen statt useMemo.
+  const activeTitle =
+    settingsCategories.find((category) => category.id === activeCategory)?.label ?? "Einstellungen";
+
+  // S-3 Fix: ObjectURL beim Wechsel/Unmount revoken (Memory-Leak verhindern).
+  useEffect(() => {
+    return () => {
+      if (avatarPreview) {
+        URL.revokeObjectURL(avatarPreview);
+      }
+    };
+  }, [avatarPreview]);
 
   function handleAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
+    setAvatarError(null);
 
     if (!file) {
       return;
     }
 
-    setAvatarPreview(URL.createObjectURL(file));
+    // S-4 Fix: MIME- und Größenvalidierung.
+    if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
+      setAvatarError("Bitte ein PNG-, JPEG- oder WebP-Bild auswählen.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_AVATAR_BYTES) {
+      setAvatarError("Datei ist zu groß (max. 5 MB).");
+      event.target.value = "";
+      return;
+    }
+
+    setAvatarPreview((previous) => {
+      if (previous) {
+        URL.revokeObjectURL(previous);
+      }
+      return URL.createObjectURL(file);
+    });
   }
 
-  function handleCategoryChange(categoryId: SettingsCategory["id"]) {
+  function handleCategoryChange(categoryId: SettingsCategoryId) {
     router.replace(`/dashboard/settings?tab=${categoryId}`, { scroll: false });
   }
 
@@ -71,20 +110,25 @@ export function SettingsPage() {
           <h1 className="mt-1 text-3xl font-bold text-gray-950">{activeTitle}</h1>
         </div>
 
-        <div className="flex flex-wrap gap-2 rounded-lg border border-gray-200 bg-white p-2 shadow-sm">
+        <div
+          role="tablist"
+          aria-label="Einstellungs-Kategorien"
+          className="flex flex-wrap gap-2 rounded-lg border border-gray-200 bg-white p-2 shadow-sm"
+        >
           {settingsCategories.map(({ id, label, icon: Icon }) => {
             const isActive = id === activeCategory;
-
             return (
               <button
                 key={id}
                 type="button"
+                role="tab"
+                aria-selected={isActive}
                 onClick={() => handleCategoryChange(id)}
                 className={cn(
                   "inline-flex h-10 items-center gap-2 rounded-md px-4 text-sm font-semibold transition-colors",
                   isActive
                     ? "bg-gray-900 text-white shadow-sm"
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-950"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-950",
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -97,6 +141,7 @@ export function SettingsPage() {
         {activeCategory === "profile" && (
           <ProfileSettings
             avatarPreview={avatarPreview}
+            avatarError={avatarError}
             fileInputRef={fileInputRef}
             onAvatarChange={handleAvatarChange}
           />
@@ -110,11 +155,23 @@ export function SettingsPage() {
 
 interface ProfileSettingsProps {
   avatarPreview: string | null;
+  avatarError: string | null;
   fileInputRef: React.RefObject<HTMLInputElement>;
   onAvatarChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-function ProfileSettings({ avatarPreview, fileInputRef, onAvatarChange }: ProfileSettingsProps) {
+function ProfileSettings({
+  avatarPreview,
+  avatarError,
+  fileInputRef,
+  onAvatarChange,
+}: ProfileSettingsProps) {
+  // S-5 Fix: Submit-Handler verhindert Page-Reload (echte Persistenz folgt mit API).
+  function handleProfileSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    // TODO: An /api/profile anbinden, sobald verfügbar.
+  }
+
   return (
     <section className="grid gap-5 lg:grid-cols-[280px_1fr]">
       <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
@@ -131,7 +188,7 @@ function ProfileSettings({ avatarPreview, fileInputRef, onAvatarChange }: Profil
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept={ALLOWED_AVATAR_TYPES.join(",")}
             className="hidden"
             onChange={onAvatarChange}
           />
@@ -144,6 +201,12 @@ function ProfileSettings({ avatarPreview, fileInputRef, onAvatarChange }: Profil
             <ImagePlus className="h-4 w-4" />
             Bild hochladen
           </Button>
+          {avatarError && (
+            <p role="alert" className="text-center text-xs text-red-600">
+              {avatarError}
+            </p>
+          )}
+          <p className="text-center text-xs text-gray-500">PNG, JPEG oder WebP, max. 5 MB.</p>
         </div>
       </div>
 
@@ -153,23 +216,29 @@ function ProfileSettings({ avatarPreview, fileInputRef, onAvatarChange }: Profil
           <p className="text-sm text-gray-500">Name, Username, E-Mail und Passwort verwalten.</p>
         </div>
 
-        <form className="mt-5 grid gap-5">
+        <form className="mt-5 grid gap-5" onSubmit={handleProfileSubmit}>
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Name" htmlFor="first-name">
-              <Input id="first-name" defaultValue="Finn" />
+              {/* S-11 Fix: Generische Demo-Daten statt echter Personendaten. S-14 Fix: name-Attribut. */}
+              <Input id="first-name" name="firstName" defaultValue="Max" />
             </Field>
             <Field label="Nachname" htmlFor="last-name">
-              <Input id="last-name" defaultValue="Pfleghaar" />
+              <Input id="last-name" name="lastName" defaultValue="Mustermann" />
             </Field>
           </div>
 
           <Field label="Username" htmlFor="username">
-            <Input id="username" defaultValue="finn.pfleghaar" />
+            <Input id="username" name="username" defaultValue="max.mustermann" />
           </Field>
 
           <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
             <Field label="E-Mail" htmlFor="email">
-              <Input id="email" type="email" defaultValue="finn.pfleghaar@dhbw.de" />
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                defaultValue="demo@learnhub.de"
+              />
             </Field>
             <Button type="button" variant="outline" className="md:mb-0">
               <Mail className="h-4 w-4" />
@@ -180,7 +249,9 @@ function ProfileSettings({ avatarPreview, fileInputRef, onAvatarChange }: Profil
           <div className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h3 className="text-sm font-semibold text-gray-950">Passwort</h3>
-              <p className="mt-1 text-sm text-gray-500">Sende einen Link zum Zurücksetzen deines Passworts.</p>
+              <p className="mt-1 text-sm text-gray-500">
+                Sende einen Link zum Zurücksetzen deines Passworts.
+              </p>
             </div>
             <Button type="button" variant="outline">
               <KeyRound className="h-4 w-4" />
@@ -201,28 +272,44 @@ function ProfileSettings({ avatarPreview, fileInputRef, onAvatarChange }: Profil
 }
 
 function NotificationSettings() {
+  // S-5 Fix: Submit-Handler.
+  function handleNotificationSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    // TODO: An /api/settings/notifications anbinden.
+  }
+
   return (
     <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-1 border-b border-gray-100 pb-4">
         <h2 className="text-base font-semibold text-gray-950">Benachrichtigungen</h2>
-        <p className="text-sm text-gray-500">Erinnerungen und Lernübersichten für deinen Alltag steuern.</p>
+        <p className="text-sm text-gray-500">
+          Erinnerungen und Lernübersichten für deinen Alltag steuern.
+        </p>
       </div>
 
-      <div className="mt-5 grid gap-5">
+      <form className="mt-5 grid gap-5" onSubmit={handleNotificationSubmit}>
         <SettingsBlock
           icon={CalendarClock}
           title="Deadline-Erinnerungen"
           description="Erinnert dich rechtzeitig an Aufgaben, Prüfungen und Abgaben."
         >
-          <CheckboxField id="deadline-reminders" label="Deadline-Erinnerungen aktivieren" defaultChecked />
+          <CheckboxField
+            id="deadline-reminders"
+            name="deadlineReminders"
+            label="Deadline-Erinnerungen aktivieren"
+            defaultChecked
+          />
           <Field label="Erinnerungsvorlauf" htmlFor="deadline-lead-time">
             <select
               id="deadline-lead-time"
+              name="deadlineLeadTime"
               defaultValue="1 Tag vorher"
-              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              className={SELECT_CLASSES}
             >
               {reminderOptions.map((option) => (
-                <option key={option}>{option}</option>
+                <option key={option} value={option}>
+                  {option}
+                </option>
               ))}
             </select>
           </Field>
@@ -233,15 +320,23 @@ function NotificationSettings() {
           title="Tägliche Lernübersicht"
           description="Fasst deine heutigen Lernsessions, offenen Aufgaben und Fristen zusammen."
         >
-          <CheckboxField id="daily-digest" label="Tägliche Lernübersicht aktivieren" defaultChecked />
+          <CheckboxField
+            id="daily-digest"
+            name="dailyDigest"
+            label="Tägliche Lernübersicht aktivieren"
+            defaultChecked
+          />
           <Field label="Uhrzeit" htmlFor="digest-time">
             <select
               id="digest-time"
+              name="digestTime"
               defaultValue="18:00"
-              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              className={SELECT_CLASSES}
             >
               {digestTimes.map((time) => (
-                <option key={time}>{time}</option>
+                <option key={time} value={time}>
+                  {time}
+                </option>
               ))}
             </select>
           </Field>
@@ -252,17 +347,26 @@ function NotificationSettings() {
           title="Lernsessions"
           description="Benachrichtigungen für geplante Lernzeiten und wiederkehrende Sessions."
         >
-          <CheckboxField id="session-reminders" label="Erinnerungen für geplante Lernsessions" defaultChecked />
-          <CheckboxField id="overdue-tasks" label="Überfällige Aufgaben zusätzlich hervorheben" />
+          <CheckboxField
+            id="session-reminders"
+            name="sessionReminders"
+            label="Erinnerungen für geplante Lernsessions"
+            defaultChecked
+          />
+          <CheckboxField
+            id="overdue-tasks"
+            name="overdueTasks"
+            label="Überfällige Aufgaben zusätzlich hervorheben"
+          />
         </SettingsBlock>
 
         <div className="flex justify-end border-t border-gray-100 pt-4">
-          <Button type="button">
+          <Button type="submit">
             <Save className="h-4 w-4" />
             Einstellungen speichern
           </Button>
         </div>
-      </div>
+      </form>
     </section>
   );
 }
@@ -270,6 +374,7 @@ function NotificationSettings() {
 function CalendarSettings() {
   const [isImporting, setIsImporting] = useState(false);
 
+  // S-10 Hinweis: Fake-Import bis API/ICS-Endpoint existiert.
   function handleScheduleImport(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -278,27 +383,35 @@ function CalendarSettings() {
     }
 
     setIsImporting(true);
+    // TODO: Echten Import an /api/calendar/import anbinden.
     window.setTimeout(() => setIsImporting(false), 1600);
   }
 
   return (
     <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-1 border-b border-gray-100 pb-4">
-        <h2 className="text-base font-semibold text-gray-950">Calendar</h2>
-        <p className="text-sm text-gray-500">Wähle aus, welchen Stundenplan du in den Kalender importieren willst.</p>
+        {/* S-1 Fix: Englische Überschrift -> Deutsch. */}
+        <h2 className="text-base font-semibold text-gray-950">Kalender</h2>
+        <p className="text-sm text-gray-500">
+          Wähle aus, welchen Stundenplan du in den Kalender importieren willst.
+        </p>
       </div>
 
       <form className="mt-5 grid max-w-xl gap-5" onSubmit={handleScheduleImport}>
         <Field label="Stundenplan" htmlFor="schedule-group">
-          <Input id="schedule-group" placeholder="TIF25A" />
+          <Input id="schedule-group" name="scheduleGroup" placeholder="TIF25A" />
         </Field>
 
         <div className="flex justify-end border-t border-gray-100 pt-4">
           {isImporting ? (
-            <div className="flex h-9 items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3">
+            <div
+              role="status"
+              aria-live="polite"
+              className="flex h-9 items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3"
+            >
               <CalendarDays className="h-4 w-4 text-gray-600" />
               <span className="text-sm font-medium text-gray-700">Stundenplan wird importiert</span>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1" aria-hidden="true">
                 <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-500 [animation-delay:-0.2s]" />
                 <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-500 [animation-delay:-0.1s]" />
                 <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-500" />
@@ -336,13 +449,14 @@ function Field({ label, htmlFor, children }: FieldProps) {
 interface CheckboxFieldProps {
   id: string;
   label: string;
+  name?: string;
   defaultChecked?: boolean;
 }
 
-function CheckboxField({ id, label, defaultChecked }: CheckboxFieldProps) {
+function CheckboxField({ id, label, name, defaultChecked }: CheckboxFieldProps) {
   return (
     <div className="flex items-center gap-3">
-      <Checkbox id={id} defaultChecked={defaultChecked} />
+      <Checkbox id={id} name={name} defaultChecked={defaultChecked} />
       <Label htmlFor={id} className="text-gray-700">
         {label}
       </Label>
