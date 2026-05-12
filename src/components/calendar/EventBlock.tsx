@@ -204,7 +204,7 @@ export function EventBlock({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
-      className={`absolute rounded-md ${event.color} text-white text-xs shadow-sm overflow-hidden select-none flex flex-col z-10 ${
+      className={`absolute rounded-md ${event.color} text-white text-xs shadow-sm select-none flex flex-col z-10 ${
         isDragging
           ? "shadow-lg opacity-95 z-20"
           : "transition-[top,height,left,width] duration-150 ease-out"
@@ -217,25 +217,40 @@ export function EventBlock({
         transform: renderTranslateX !== 0 ? `translateX(${renderTranslateX}px)` : undefined,
         // Während Drag KEINE CSS-Transition, damit der Block dem Cursor folgt
         transition: isDragging ? "none" : undefined,
+        // overflow:visible, damit die Resize-Hit-Zonen leicht aus dem Block ragen dürfen
+        overflow: "visible",
       }}
     >
-      <div
-        onPointerDown={(e) => onPointerDown(e, "resize-top")}
-        className="h-1.5 w-full cursor-ns-resize hover:bg-black/20"
-      />
+      {/* Move-Bereich: füllt den ganzen Block, liegt unter den Resize-Griffen */}
       <div
         onPointerDown={(e) => onPointerDown(e, "move")}
-        className="flex-1 px-2 py-1 cursor-grab active:cursor-grabbing"
+        className="absolute inset-0 cursor-grab active:cursor-grabbing rounded-md overflow-hidden px-2 py-1"
       >
         <div className="font-semibold leading-tight truncate">{event.title}</div>
         <div className="opacity-90 leading-tight truncate">
           {formatTime(event.start)} – {formatTime(event.end)}
         </div>
       </div>
+
+      {/*
+        Resize-Griffe: 12 px hohe Hit-Zonen, die 4 px über/unter den Block
+        hinausragen. Dadurch sind sie auch bei 30-min-Events problemlos
+        greifbar, ohne den sichtbaren Block zu vergrößern.
+      */}
+      <div
+        onPointerDown={(e) => onPointerDown(e, "resize-top")}
+        className="absolute left-0 right-0 cursor-ns-resize z-20 group"
+        style={{ top: -4, height: 12 }}
+      >
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-1 w-8 rounded-full bg-white/0 group-hover:bg-white/60 transition-colors" />
+      </div>
       <div
         onPointerDown={(e) => onPointerDown(e, "resize-bottom")}
-        className="h-1.5 w-full cursor-ns-resize hover:bg-black/20"
-      />
+        className="absolute left-0 right-0 cursor-ns-resize z-20 group"
+        style={{ bottom: -4, height: 12 }}
+      >
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-1 w-8 rounded-full bg-white/0 group-hover:bg-white/60 transition-colors" />
+      </div>
     </div>
   );
 }
