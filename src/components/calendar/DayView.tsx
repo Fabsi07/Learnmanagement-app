@@ -7,6 +7,7 @@ import {
   DAY_END_HOUR,
   HOUR_HEIGHT,
   eventOnDay,
+  layoutDayEvents,
 } from "./events";
 import { EventBlock } from "./EventBlock";
 
@@ -70,8 +71,14 @@ export function DayView({ currentDate, events, onEventChange }: DayViewProps) {
               style={{ height: HOUR_HEIGHT }}
             />
           ))}
-          {dayEvents.map((ev) => (
-            <EventBlock key={ev.id} event={ev} onChange={onEventChange} />
+          {layoutDayEvents(dayEvents).map(({ event: ev, column, columns }) => (
+            <EventBlock
+              key={ev.id}
+              event={ev}
+              onChange={onEventChange}
+              column={column}
+              columns={columns}
+            />
           ))}
         </div>
       </div>

@@ -8,6 +8,7 @@ import {
   DAY_END_HOUR,
   HOUR_HEIGHT,
   eventOnDay,
+  layoutDayEvents,
 } from "./events";
 import { EventBlock } from "./EventBlock";
 
@@ -84,6 +85,7 @@ export function WeekView({ currentDate, events, onEventChange }: WeekViewProps) 
         {/* Tages-Spalten */}
         {days.map((day, di) => {
           const dayEvents = events.filter((e) => eventOnDay(e, day));
+          const laidOut = layoutDayEvents(dayEvents);
           return (
             <div
               key={di}
@@ -100,12 +102,14 @@ export function WeekView({ currentDate, events, onEventChange }: WeekViewProps) 
                 />
               ))}
               {/* Events */}
-              {dayEvents.map((ev) => (
+              {laidOut.map(({ event: ev, column, columns }) => (
                 <EventBlock
                   key={ev.id}
                   event={ev}
                   onChange={onEventChange}
                   dayWidth={dayWidth}
+                  column={column}
+                  columns={columns}
                 />
               ))}
             </div>

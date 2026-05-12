@@ -13,6 +13,7 @@ export const DAY_START_HOUR = 7;
 export const DAY_END_HOUR = 21; // exclusive Ende → 14 Stunden sichtbar
 export const HOUR_HEIGHT = 64; // px (= h-16)
 export const SNAP_MIN = 15; // Snap-Raster in Minuten
+export const MIN_EVENT_MIN = 30; // Mindestdauer eines Termins in Minuten
 
 /** Erzeugt ein Datum am gegebenen Tag mit Stunde+Minute. */
 function at(base: Date, h: number, m: number): Date {
@@ -86,6 +87,21 @@ export function getDummyEvents(): CalEvent[] {
       end: at(d(today.getDay() === 0 ? -1 : 0), 18, 30),
       color: "bg-blue-500",
     },
+    // Beispiele für überlappende Termine (zwei parallele Slots am Mittwoch)
+    {
+      id: "8",
+      title: "Tutorium Analysis",
+      start: at(d(2), 14, 0),
+      end: at(d(2), 15, 30),
+      color: "bg-blue-500",
+    },
+    {
+      id: "9",
+      title: "Projektmeeting",
+      start: at(d(2), 14, 30),
+      end: at(d(2), 16, 0),
+      color: "bg-emerald-500",
+    },
   ];
 }
 
@@ -124,4 +140,59 @@ export function formatTime(d: Date): string {
   const h = d.getHours().toString().padStart(2, "0");
   const m = d.getMinutes().toString().padStart(2, "0");
   return `${h}:${m}`;
+}
+
+/**
+ * Spalten-Layout für Events innerhalb eines Tages.
+ *
+ * Greedy column packing: Sortiere nach Startzeit; bilde Cluster aus transitiv
+ * überlappenden Events; jedes Event bekommt die niedrigste freie Spalte
+ * innerhalb seines Clusters. Am Ende kennt jedes Event `column` und `columns`
+ * (Gesamtanzahl Spalten im Cluster) – damit kann ein Block in der Tages-Spalte
+ * horizontal nebeneinander gerendert werden, statt sich zu überlagern.
+ */
+export type EventLayout = {
+  event: CalEvent;
+  column: number;
+  columns: number;
+};
+
+export function layoutDayEvents(events: CalEvent[]): EventLayout[] {
+  const sorted = [...events].sort((a, b) => {
+    const d = a.start.getTime() - b.start.getTime();
+    return d !== 0 ? d : a.end.getTime() - b.end.getTime();
+  });
+
+  const result: EventLayout[] = [];
+  let cluster: EventLayout[] = [];
+  let clusterEnd = 0;
+
+  function flushCluster() {
+    const cols = cluster.reduce((m, it) => Math.max(m, it.column + 1), 0);
+    cluster.forEach((it) => {
+      it.columns = cols;
+    });
+    result.push(...cluster);
+    cluster = [];
+    clusterEnd = 0;
+  }
+
+  for (const ev of sorted) {
+    // Neuer Cluster, wenn dieses Event nach dem bisherigen Cluster-Ende beginnt
+    if (cluster.length > 0 && ev.start.getTime() >= clusterEnd) {
+      flushCluster();
+    }
+    // Belegte Spalten unter den noch aktiven (überlappenden) Items im Cluster
+    const used = new Set(
+      cluster
+        .filter((it) => it.event.end.getTime() > ev.start.getTime())
+        .map((it) => it.column)
+    );
+    let col = 0;
+    while (used.has(col)) col++;
+    cluster.push({ event: ev, column: col, columns: 1 });
+    clusterEnd = Math.max(clusterEnd, ev.end.getTime());
+  }
+  flushCluster();
+  return result;
 }
