@@ -10,6 +10,7 @@ import {
   layoutDayEvents,
 } from "./events";
 import { EventBlock } from "./EventBlock";
+import { AllDayBar } from "./AllDayBar";
 
 interface DayViewProps {
   currentDate: Date;
@@ -26,7 +27,7 @@ export function DayView({ currentDate, events, onEventChange }: DayViewProps) {
   const today = new Date();
   const isToday = isSameDay(currentDate, today);
   const totalHeight = HOURS.length * HOUR_HEIGHT;
-  const dayEvents = events.filter((e) => eventOnDay(e, currentDate));
+  const dayEvents = events.filter((e) => !e.allDay && eventOnDay(e, currentDate));
 
   return (
     <div className="flex flex-col h-full">
@@ -46,6 +47,9 @@ export function DayView({ currentDate, events, onEventChange }: DayViewProps) {
           </div>
         </div>
       </div>
+
+      {/* All-Day-Leiste */}
+      <AllDayBar days={[currentDate]} events={events} />
 
       {/* Body: Zeit-Spalte + Tages-Spalte */}
       <div className="grid grid-cols-[64px_1fr]">

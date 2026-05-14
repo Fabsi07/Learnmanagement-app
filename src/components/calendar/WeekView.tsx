@@ -11,6 +11,7 @@ import {
   layoutDayEvents,
 } from "./events";
 import { EventBlock } from "./EventBlock";
+import { AllDayBar } from "./AllDayBar";
 
 interface WeekViewProps {
   currentDate: Date;
@@ -67,6 +68,9 @@ export function WeekView({ currentDate, events, onEventChange }: WeekViewProps) 
         })}
       </div>
 
+      {/* All-Day-Leiste (Feiertage, Ferien, mehrtägige Events) */}
+      <AllDayBar days={days} events={events} />
+
       {/* Body: Zeit-Spalte + 7 Tages-Spalten */}
       <div className="grid grid-cols-[64px_repeat(7,1fr)]">
         {/* Zeit-Spalte */}
@@ -84,7 +88,7 @@ export function WeekView({ currentDate, events, onEventChange }: WeekViewProps) 
 
         {/* Tages-Spalten */}
         {days.map((day, di) => {
-          const dayEvents = events.filter((e) => eventOnDay(e, day));
+          const dayEvents = events.filter((e) => !e.allDay && eventOnDay(e, day));
           const laidOut = layoutDayEvents(dayEvents);
           return (
             <div

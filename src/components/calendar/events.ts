@@ -1,4 +1,6 @@
-// Event-Typen, Dummy-Daten und Helfer für den Kalender
+// Event-Typen und Helfer für den Kalender
+
+export type EventSource = "local" | "dhbw";
 
 export type CalEvent = {
   id: string;
@@ -6,6 +8,10 @@ export type CalEvent = {
   start: Date;
   end: Date;
   color: string; // tailwind bg classes, z.B. "bg-brand-red"
+  source?: EventSource;
+  readOnly?: boolean;
+  location?: string;
+  allDay?: boolean;
 };
 
 // Layout-Konstanten (müssen mit den Views übereinstimmen)
@@ -15,95 +21,6 @@ export const HOUR_HEIGHT = 64; // px (= h-16)
 export const SNAP_MIN = 15; // Snap-Raster in Minuten
 export const MIN_EVENT_MIN = 30; // Mindestdauer eines Termins in Minuten
 
-/** Erzeugt ein Datum am gegebenen Tag mit Stunde+Minute. */
-function at(base: Date, h: number, m: number): Date {
-  const d = new Date(base);
-  d.setHours(h, m, 0, 0);
-  return d;
-}
-
-/** Liefert ein paar Dummy-Events relativ zu „heute" für schnelles Testen. */
-export function getDummyEvents(): CalEvent[] {
-  const today = new Date();
-  const monday = new Date(today);
-  const day = monday.getDay();
-  const diff = (day === 0 ? -6 : 1) - day;
-  monday.setDate(monday.getDate() + diff);
-  monday.setHours(0, 0, 0, 0);
-
-  const d = (offset: number) => {
-    const x = new Date(monday);
-    x.setDate(monday.getDate() + offset);
-    return x;
-  };
-
-  return [
-    {
-      id: "1",
-      title: "Mathe Vorlesung",
-      start: at(d(0), 8, 0),
-      end: at(d(0), 9, 30),
-      color: "bg-brand-red",
-    },
-    {
-      id: "2",
-      title: "Lerngruppe BWL",
-      start: at(d(0), 14, 0),
-      end: at(d(0), 15, 30),
-      color: "bg-blue-500",
-    },
-    {
-      id: "3",
-      title: "Programmieren Übung",
-      start: at(d(1), 10, 0),
-      end: at(d(1), 12, 0),
-      color: "bg-emerald-500",
-    },
-    {
-      id: "4",
-      title: "Prüfungsvorbereitung",
-      start: at(d(2), 9, 0),
-      end: at(d(2), 11, 0),
-      color: "bg-amber-500",
-    },
-    {
-      id: "5",
-      title: "Statistik Klausur",
-      start: at(d(3), 13, 0),
-      end: at(d(3), 14, 30),
-      color: "bg-brand-red",
-    },
-    {
-      id: "6",
-      title: "Sprechstunde Prof.",
-      start: at(d(4), 11, 0),
-      end: at(d(4), 11, 45),
-      color: "bg-purple-500",
-    },
-    {
-      id: "7",
-      title: "Sport",
-      start: at(d(today.getDay() === 0 ? -1 : 0), 17, 0),
-      end: at(d(today.getDay() === 0 ? -1 : 0), 18, 30),
-      color: "bg-blue-500",
-    },
-    // Beispiele für überlappende Termine (zwei parallele Slots am Mittwoch)
-    {
-      id: "8",
-      title: "Tutorium Analysis",
-      start: at(d(2), 14, 0),
-      end: at(d(2), 15, 30),
-      color: "bg-blue-500",
-    },
-    {
-      id: "9",
-      title: "Projektmeeting",
-      start: at(d(2), 14, 30),
-      end: at(d(2), 16, 0),
-      color: "bg-emerald-500",
-    },
-  ];
-}
 
 /** True, wenn ein Event ganz oder teilweise an diesem Tag liegt. */
 export function eventOnDay(ev: CalEvent, day: Date): boolean {
@@ -112,6 +29,19 @@ export function eventOnDay(ev: CalEvent, day: Date): boolean {
     ev.start.getMonth() === day.getMonth() &&
     ev.start.getDate() === day.getDate()
   );
+}
+
+/**
+ * True, wenn ein Event (typischerweise ganztägig / mehrtägig) den Tag
+ * überlappt. DTEND in ICS ist bei All-Day-Events exklusiv → wir prüfen
+ * `start <= dayEnd && end > dayStart`.
+ */
+export function eventOverlapsDay(ev: CalEvent, day: Date): boolean {
+  const dayStart = new Date(day);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(day);
+  dayEnd.setHours(23, 59, 59, 999);
+  return ev.start.getTime() <= dayEnd.getTime() && ev.end.getTime() > dayStart.getTime();
 }
 
 /** Minuten ab DAY_START_HOUR (kann negativ / >range sein, Caller clampt). */

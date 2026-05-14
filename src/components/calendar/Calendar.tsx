@@ -1,22 +1,32 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { MonthView } from "./MonthView";
 import { WeekView } from "./WeekView";
 import { DayView } from "./DayView";
 import { formatMonthYear, formatWeekRange, formatDay } from "./utils";
-import { CalEvent, getDummyEvents } from "./events";
+import { CalEvent } from "./events";
+import { useExternalEvents } from "@/lib/calendar/useExternalEvents";
 
 type View = "month" | "week" | "day";
 
 export function Calendar() {
   const [view, setView] = useState<View>("week");
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [events, setEvents] = useState<CalEvent[]>(() => getDummyEvents());
+  const [localEvents, setLocalEvents] = useState<CalEvent[]>([]);
+  const {
+    events: externalEvents,
+    loading: externalLoading,
+    error: externalError,
+    refresh: refreshExternal,
+  } = useExternalEvents();
+
+  const events: CalEvent[] = [...localEvents, ...externalEvents];
 
   function handleEventChange(next: CalEvent) {
-    setEvents((prev) => prev.map((e) => (e.id === next.id ? next : e)));
+    if (next.readOnly) return;
+    setLocalEvents((prev) => prev.map((e) => (e.id === next.id ? next : e)));
   }
 
   function goPrev() {
@@ -77,7 +87,17 @@ export function Calendar() {
         </div>
 
         {/* View Toggle */}
-        <div className="flex items-center gap-1 p-1 rounded-xl bg-gray-100">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={refreshExternal}
+            disabled={externalLoading}
+            title={externalError ? `Sync-Fehler: ${externalError}` : "DHBW-Kalender aktualisieren"}
+            className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+            aria-label="Externen Kalender aktualisieren"
+          >
+            <RefreshCw className={`w-4 h-4 ${externalLoading ? "animate-spin" : ""} ${externalError ? "text-red-500" : "text-gray-600"}`} />
+          </button>
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-gray-100">
           {(["month", "week", "day"] as View[]).map((v) => (
             <button
               key={v}
@@ -91,6 +111,7 @@ export function Calendar() {
               {v === "month" ? "Monat" : v === "week" ? "Woche" : "Tag"}
             </button>
           ))}
+          </div>
         </div>
       </div>
 

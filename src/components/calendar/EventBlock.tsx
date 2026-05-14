@@ -78,6 +78,7 @@ export function EventBlock({
   }
 
   function onPointerDown(e: React.PointerEvent, mode: DragMode) {
+    if (event.readOnly) return;
     e.stopPropagation();
     e.preventDefault();
     (e.target as Element).setPointerCapture?.(e.pointerId);
@@ -198,6 +199,7 @@ export function EventBlock({
   const renderTop = preview?.top ?? baseTop;
   const renderHeight = preview?.height ?? baseHeight;
   const renderTranslateX = preview?.translateX ?? 0;
+  const isReadOnly = !!event.readOnly;
 
   return (
     <div
@@ -208,49 +210,48 @@ export function EventBlock({
         isDragging
           ? "shadow-lg opacity-95 z-20"
           : "transition-[top,height,left,width] duration-150 ease-out"
-      }`}
+      } ${isReadOnly ? "ring-1 ring-white/30 opacity-95" : ""}`}
       style={{
         top: renderTop,
         height: renderHeight,
         left: `calc(${leftPct}% + 2px)`,
         width: `calc(${widthPct}% - 4px)`,
         transform: renderTranslateX !== 0 ? `translateX(${renderTranslateX}px)` : undefined,
-        // Während Drag KEINE CSS-Transition, damit der Block dem Cursor folgt
         transition: isDragging ? "none" : undefined,
-        // overflow:visible, damit die Resize-Hit-Zonen leicht aus dem Block ragen dürfen
         overflow: "visible",
       }}
     >
-      {/* Move-Bereich: füllt den ganzen Block, liegt unter den Resize-Griffen */}
       <div
         onPointerDown={(e) => onPointerDown(e, "move")}
-        className="absolute inset-0 cursor-grab active:cursor-grabbing rounded-md overflow-hidden px-2 py-1"
+        className={`absolute inset-0 rounded-md overflow-hidden px-2 py-1 ${
+          isReadOnly ? "cursor-default" : "cursor-grab active:cursor-grabbing"
+        }`}
       >
         <div className="font-semibold leading-tight truncate">{event.title}</div>
         <div className="opacity-90 leading-tight truncate">
           {formatTime(event.start)} – {formatTime(event.end)}
+          {event.location ? ` · ${event.location}` : ""}
         </div>
       </div>
 
-      {/*
-        Resize-Griffe: 12 px hohe Hit-Zonen, die 4 px über/unter den Block
-        hinausragen. Dadurch sind sie auch bei 30-min-Events problemlos
-        greifbar, ohne den sichtbaren Block zu vergrößern.
-      */}
-      <div
-        onPointerDown={(e) => onPointerDown(e, "resize-top")}
-        className="absolute left-0 right-0 cursor-ns-resize z-20 group"
-        style={{ top: -4, height: 12 }}
-      >
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-1 w-8 rounded-full bg-white/0 group-hover:bg-white/60 transition-colors" />
-      </div>
-      <div
-        onPointerDown={(e) => onPointerDown(e, "resize-bottom")}
-        className="absolute left-0 right-0 cursor-ns-resize z-20 group"
-        style={{ bottom: -4, height: 12 }}
-      >
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-1 w-8 rounded-full bg-white/0 group-hover:bg-white/60 transition-colors" />
-      </div>
+      {!isReadOnly && (
+        <>
+          <div
+            onPointerDown={(e) => onPointerDown(e, "resize-top")}
+            className="absolute left-0 right-0 cursor-ns-resize z-20 group"
+            style={{ top: -4, height: 12 }}
+          >
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-1 w-8 rounded-full bg-white/0 group-hover:bg-white/60 transition-colors" />
+          </div>
+          <div
+            onPointerDown={(e) => onPointerDown(e, "resize-bottom")}
+            className="absolute left-0 right-0 cursor-ns-resize z-20 group"
+            style={{ bottom: -4, height: 12 }}
+          >
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-1 w-8 rounded-full bg-white/0 group-hover:bg-white/60 transition-colors" />
+          </div>
+        </>
+      )}
     </div>
   );
 }
