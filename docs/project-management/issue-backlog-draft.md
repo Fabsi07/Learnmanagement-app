@@ -127,7 +127,8 @@ Relevant: `docs/prd.md`, `docs/prd_algorithmus.md`, `docs/course/README.md`.
 
 ## Schaetzung
 
-Team-Schaetzung: offen
+Team-Schaetzung: 2
+Assignee: Lucas
 
 ## A2 - Moodle-README fuer Projektplan-Abgabe erstellen
 
@@ -161,7 +162,8 @@ Moeglicher Pfad: `docs/project-management/project-plan-submission-readme.md`.
 
 ## Schaetzung
 
-Team-Schaetzung: offen
+Team-Schaetzung: 1
+Assignee: Lucas
 
 ## A3 - Bestehende GitHub Issues aufraeumen und einordnen
 
@@ -171,7 +173,7 @@ Als Projektteam moechten wir alte und neue Issues klar einordnen, damit das GitH
 
 ## Beschreibung
 
-Bestehende Issues aus Meilenstein 1 werden gesichtet. Erledigte Issues werden geschlossen oder als erledigt markiert, Sammel-Issues werden als Epics genutzt, und neue Umsetzungstickets werden passend verlinkt.
+Bestehende Issues aus Meilenstein 1 werden gesichtet. Erledigte Issues werden geschlossen oder als erledigt markiert, Sammel-Issues werden als Epics genutzt oder gelöscht/geschlossen, und neue Umsetzungstickets werden passend verlinkt.
 
 ## Akzeptanzkriterien
 
@@ -195,7 +197,8 @@ Bestehende Issues: `#1`, `#2`, `#5`, `#7`, `#9`, `#12`, `#17`, `#18`, `#21`, `#2
 
 ## Schaetzung
 
-Team-Schaetzung: offen
+Team-Schaetzung: 2
+Assignee: Lucas
 
 ---
 
@@ -235,7 +238,8 @@ Relevant: `prisma/schema.prisma`, `docs/prd_algorithmus.md`.
 
 ## Schaetzung
 
-Team-Schaetzung: offen
+Team-Schaetzung: 5
+Assignee: Yannik / Fabi
 
 ## B2 - Lokale Datenbankkonfiguration dokumentieren
 
@@ -264,11 +268,12 @@ Relevant: `README.md`, `docs/tech-stack.md`, optional `docker-compose.yml`.
 
 ## Abhaengigkeiten
 
-- Blockiert durch: Entscheidung zu lokaler PostgreSQL-/Docker-Nutzung.
+- Blockiert durch: Entscheidung zu lokaler PostgreSQL-/Docker-Nutzung --> wird von am Ticket beteiligten Devs abgestimmt und festgelegt.
 
 ## Schaetzung
 
-Team-Schaetzung: offen
+Team-Schaetzung: 3
+Assignee: Yannik / Fabi
 
 ## B3 - Erste Prisma-Migration fuer Kernmodelle erstellen
 
@@ -339,7 +344,7 @@ Relevant: `src/components/login/LoginForm.tsx`, `src/middleware.ts`, `docs/prd_a
 
 ## Schaetzung
 
-Team-Schaetzung: offen
+Team-Schaetzung: 3
 
 ## C2 - Registrierung implementieren
 
@@ -565,7 +570,7 @@ Relevant: `src/components/calendar/events.ts`, `src/components/calendar/Calendar
 
 ## Schaetzung
 
-Team-Schaetzung: offen
+Team-Schaetzung: 2
 
 ## E2 - Kalendertermine persistent laden und speichern
 
@@ -746,7 +751,8 @@ Moeglicher Pfad: `docs/algorithm/learning-plan-algorithm.md`.
 
 ## Schaetzung
 
-Team-Schaetzung: offen
+Team-Schaetzung: 5
+Assignee: Yannik + Lenni
 
 ## G2 - Algorithmus als reine TypeScript-Funktion implementieren
 
@@ -783,7 +789,7 @@ Moeglicher Pfad: `src/lib/calculations/learningPlan.ts`.
 
 ## Schaetzung
 
-Team-Schaetzung: offen
+Team-Schaetzung: 3
 
 ## G3 - Automatische Lernplan-Erstellung in Lernplan-Flow integrieren
 
@@ -927,7 +933,7 @@ Moeglicher Pfad: `docs/testing/manual-acceptance-test.md`.
 
 ## Schaetzung
 
-Team-Schaetzung: offen
+Team-Schaetzung: 2
 
 ## H3 - Setup-Dokumentation fuer finalen Stand aktualisieren
 
